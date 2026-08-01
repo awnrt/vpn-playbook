@@ -20,7 +20,7 @@ amneziawg_obfuscation:
 #   - public_key: "client1key"
 #     allowed_ips:
 #       - "10.66.66.2"
-#       - "fd::2"
+#       - "fd42:66:66::2/64"
 #   - public_key: "client2key"
 #     allowed_ips:
 #       - "10.66.66.3"
