@@ -1,0 +1,63 @@
+---
+- name: Ensure AmneziaWG directory exists
+  ansible.builtin.file:
+    path: /etc/amnezia/amneziawg
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Generate server private key
+  ansible.builtin.command:
+    cmd: awg genkey
+  register: awg_private_key
+  args:
+    creates: /etc/amnezia/amneziawg/privatekey
+
+- name: Store server private key
+  ansible.builtin.copy:
+    content: "{{ awg_private_key.stdout }}"
+    dest: /etc/amnezia/amneziawg/privatekey
+    owner: root
+    group: root
+    mode: "0600"
+  when: awg_private_key.changed
+
+- name: Generate server public key
+  ansible.builtin.shell:
+    cmd: "awg pubkey < /etc/amnezia/amneziawg/privatekey > /etc/amnezia/amneziawg/publickey"
+  args:
+    creates: /etc/amnezia/amneziawg/publickey
+
+- name: Read server private key
+  ansible.builtin.slurp:
+    src: /etc/amnezia/amneziawg/privatekey
+  register: server_private_key_file
+
+- name: Set server private key variable
+  ansible.builtin.set_fact:
+    server_private_key: "{{ server_private_key_file.content | b64decode | trim }}"
+
+- name: Install AmneziaWG config
+  ansible.builtin.template:
+    src: awg0.conf.j2
+    dest: "/etc/amnezia/amneziawg/awg0.conf"
+    owner: root
+    group: root
+    mode: "0600"
+  notify:
+    - Start amneziawg
+
+- name: Install helper script into PATH
+  ansible.builtin.copy:
+    src: pw
+    dest: /usr/local/bin/pw
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Ensure AmneziaWG interface is enabled and running
+  ansible.builtin.systemd:
+    name: "awg-quick@awg0"
+    state: started
+    enabled: true

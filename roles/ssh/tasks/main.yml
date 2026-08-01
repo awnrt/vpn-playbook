@@ -1,0 +1,26 @@
+---
+- name: Add SSH hardening config
+  ansible.builtin.copy:
+    dest: /etc/ssh/sshd_config.d/99-hardening.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      # Managed by Ansible
+
+      PermitRootLogin no
+      PasswordAuthentication no
+      PubkeyAuthentication yes
+      PermitEmptyPasswords no
+
+      Port {{ ssh_port }}
+
+      X11Forwarding no
+
+      MaxAuthTries 3
+      LoginGraceTime 30
+
+      ClientAliveInterval 300
+      ClientAliveCountMax 2
+    validate: "sshd -t -f %s"
+  notify: reload ssh

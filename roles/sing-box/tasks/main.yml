@@ -1,0 +1,26 @@
+---
+- name: Configure sing-box repository
+  ansible.builtin.import_tasks: repo.yml
+
+- name: Install sing-box package
+  ansible.builtin.import_tasks: install.yml
+
+- name: Render sing-box configuration
+  ansible.builtin.import_tasks: config.yml
+
+- name: Ensure sing-box service is managed
+  ansible.builtin.import_tasks: service.yml
+
+- name: Ensure helper dependencies are installed
+  ansible.builtin.package:
+    name:
+      - jq
+    state: present
+
+- name: Install helper script into PATH
+  ansible.builtin.copy:
+    src: sbox
+    dest: /usr/local/bin/sbox
+    owner: root
+    group: root
+    mode: "0755"

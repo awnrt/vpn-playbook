@@ -1,0 +1,64 @@
+{
+  "log": {
+    "disabled": false,
+    "level": "warn"
+  },
+  "dns": {
+    "servers": [
+      {
+        "type": "udp",
+        "tag": "mullvad",
+        "server": "127.0.0.1",
+        "server_port": 5300
+      }
+    ],
+    "final": "mullvad",
+    "reverse_mapping": true
+  },
+  "inbounds": [
+    {
+      "type": "vless",
+      "tag": "vless-in",
+      "listen": {{ singbox_listen_address | tojson }},
+      "listen_port": {{ singbox_listen_port }},
+      "users": [
+      {% for user in singbox_users | default([]) %}
+      {
+        "name": {{ user.name | tojson }},
+          "uuid": {{ user.uuid | tojson }},
+          "flow": {{ user.flow | tojson }}
+      }{% if not loop.last %},{% endif %}
+      {% endfor %}
+      ],
+      "tls": {
+        "enabled": true,
+        "server_name": {{ singbox_tls_server_name | tojson }},
+        "reality": {
+          "enabled": true,
+          "handshake": {
+            "server": {{ singbox_reality_handshake_server | tojson }},
+            "server_port": {{ singbox_reality_handshake_port }}
+          },
+          "private_key": {{ singbox_reality_private_key | tojson }},
+          "short_id": [""]
+        }
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "type": "direct",
+      "tag": "direct"
+    }
+  ],
+  "route": {
+    "default_domain_resolver": "mullvad",
+    "rules": [
+      {
+        "action": "sniff"
+      }
+    ],
+    "auto_detect_interface": true,
+    "final": "direct"
+  }
+}

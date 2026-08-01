@@ -1,0 +1,89 @@
+#!/bin/sh
+#
+# Copyright (C) 2026 awy <awy [at] awy [dot] one>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+set -eu
+
+# It's a port-forwarding script
+#
+# usage from client machine:
+# ssh vpn pw enable 3344
+# ssh vpn pw disable 3344
+# ssh vpn pw list
+
+ACTION="${1:-list}"
+PORT="${2:-51413}"
+
+WAN_IF=eth0
+WG_IF=awg0
+HOME4=10.0.0.2
+HOME6=fd::2
+
+enable() {
+    iptables -t nat -C PREROUTING -i "$WAN_IF" -p tcp --dport "$PORT" -j DNAT --to-destination "$HOME4:$PORT" 2>/dev/null || \
+    iptables -t nat -A PREROUTING -i "$WAN_IF" -p tcp --dport "$PORT" -j DNAT --to-destination "$HOME4:$PORT"
+
+    iptables -t nat -C PREROUTING -i "$WAN_IF" -p udp --dport "$PORT" -j DNAT --to-destination "$HOME4:$PORT" 2>/dev/null || \
+    iptables -t nat -A PREROUTING -i "$WAN_IF" -p udp --dport "$PORT" -j DNAT --to-destination "$HOME4:$PORT"
+
+    iptables -C FORWARD -i "$WAN_IF" -o "$WG_IF" -d "$HOME4" -p tcp --dport "$PORT" -j ACCEPT 2>/dev/null || \
+    iptables -I FORWARD 1 -i "$WAN_IF" -o "$WG_IF" -d "$HOME4" -p tcp --dport "$PORT" -j ACCEPT
+
+    iptables -C FORWARD -i "$WAN_IF" -o "$WG_IF" -d "$HOME4" -p udp --dport "$PORT" -j ACCEPT 2>/dev/null || \
+    iptables -I FORWARD 1 -i "$WAN_IF" -o "$WG_IF" -d "$HOME4" -p udp --dport "$PORT" -j ACCEPT
+
+
+    ip6tables -t nat -C PREROUTING -i "$WAN_IF" -p tcp --dport "$PORT" -j DNAT --to-destination "[$HOME6]:$PORT" 2>/dev/null || \
+    ip6tables -t nat -A PREROUTING -i "$WAN_IF" -p tcp --dport "$PORT" -j DNAT --to-destination "[$HOME6]:$PORT"
+
+    ip6tables -t nat -C PREROUTING -i "$WAN_IF" -p udp --dport "$PORT" -j DNAT --to-destination "[$HOME6]:$PORT" 2>/dev/null || \
+    ip6tables -t nat -A PREROUTING -i "$WAN_IF" -p udp --dport "$PORT" -j DNAT --to-destination "[$HOME6]:$PORT"
+
+    echo "Enabled forward on $PORT"
+}
+
+disable() {
+    iptables -t nat -D PREROUTING -i "$WAN_IF" -p tcp --dport "$PORT" -j DNAT --to-destination "$HOME4:$PORT" 2>/dev/null || true
+    iptables -t nat -D PREROUTING -i "$WAN_IF" -p udp --dport "$PORT" -j DNAT --to-destination "$HOME4:$PORT" 2>/dev/null || true
+
+    iptables -D FORWARD -i "$WAN_IF" -o "$WG_IF" -d "$HOME4" -p tcp --dport "$PORT" -j ACCEPT 2>/dev/null || true
+    iptables -D FORWARD -i "$WAN_IF" -o "$WG_IF" -d "$HOME4" -p udp --dport "$PORT" -j ACCEPT 2>/dev/null || true
+
+    ip6tables -t nat -D PREROUTING -i "$WAN_IF" -p tcp --dport "$PORT" -j DNAT --to-destination "[$HOME6]:$PORT" 2>/dev/null || true
+    ip6tables -t nat -D PREROUTING -i "$WAN_IF" -p udp --dport "$PORT" -j DNAT --to-destination "[$HOME6]:$PORT" 2>/dev/null || true
+
+    echo "Disabled forward on $PORT"
+}
+
+list() {
+    echo "IPv4 forwarded ports:"
+    iptables -t nat -L PREROUTING -n -v --line-numbers | grep DNAT || echo "none"
+
+    echo
+    echo "IPv6 forwarded ports:"
+    ip6tables -t nat -L PREROUTING -n -v --line-numbers | grep DNAT || echo "none"
+}
+
+case "$ACTION" in
+    enable)
+        enable
+        ;;
+    disable)
+        disable
+        ;;
+    list)
+        list
+        ;;
+    *)
+        echo "Usage:"
+        echo "$0 enable PORT"
+        echo "$0 disable PORT"
+        echo "$0 list"
+        exit 1
+        ;;
+esac

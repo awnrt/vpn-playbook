@@ -1,0 +1,68 @@
+---
+- name: Ensure sing-box config directory exists
+  ansible.builtin.file:
+    path: "/etc/sing-box"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Ensure Reality key directory exists
+  ansible.builtin.file:
+    path: "{{ singbox_reality_key_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Check whether Reality private key already exists
+  ansible.builtin.stat:
+    path: "{{ singbox_reality_private_key_file }}"
+  register: singbox_reality_private_key_stat
+
+- name: Generate Reality keypair once
+  ansible.builtin.shell: |
+    set -o pipefail
+    sing-box generate reality-keypair | awk '
+      /^PrivateKey:/ { print $2 > "{{ singbox_reality_private_key_file }}" }
+      /^PublicKey:/  { print $2 > "{{ singbox_reality_public_key_file }}" }
+    '
+  args:
+    executable: /bin/bash
+  when: not singbox_reality_private_key_stat.stat.exists
+  changed_when: true
+
+- name: Set permissions on Reality key files
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: "{{ singbox_reality_private_key_file }}", mode: "0600" }
+    - { path: "{{ singbox_reality_public_key_file }}", mode: "0644" }
+
+- name: Read Reality private key
+  ansible.builtin.slurp:
+    src: "{{ singbox_reality_private_key_file }}"
+  register: singbox_reality_private_key_raw
+
+- name: Read Reality public key
+  ansible.builtin.slurp:
+    src: "{{ singbox_reality_public_key_file }}"
+  register: singbox_reality_public_key_raw
+
+- name: Set Reality facts
+  ansible.builtin.set_fact:
+    singbox_reality_private_key: "{{ singbox_reality_private_key_raw.content | b64decode | trim }}"
+    singbox_reality_public_key: "{{ singbox_reality_public_key_raw.content | b64decode | trim }}"
+
+- name: Render sing-box configuration
+  ansible.builtin.template:
+    src: config.json.j2
+    dest: "/etc/sing-box/config.json"
+    owner: root
+    group: root
+    mode: "0640"
+    validate: "sing-box check -c %s"
+  notify: Restart sing-box

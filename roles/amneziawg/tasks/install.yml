@@ -1,0 +1,88 @@
+---
+- name: Install AmneziaWG prerequisites
+  ansible.builtin.apt:
+    name:
+      - gnupg2
+      - ca-certificates
+      - linux-headers-{{ ansible_facts['kernel'] }}
+      - python3-apt
+      - python3-debian
+      - dkms
+    state: present
+    update_cache: true
+
+- name: Create apt keyrings directory
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Download AmneziaWG repository signing key
+  ansible.builtin.get_url:
+    url: "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x57290828"
+    dest: /etc/apt/keyrings/amneziawg.asc
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Add AmneziaWG binary repository
+  ansible.builtin.deb822_repository:
+    name: amneziawg
+    types:
+      - deb
+    uris:
+      - https://ppa.launchpadcontent.net/amnezia/ppa/ubuntu
+    suites:
+      - focal
+    components:
+      - main
+    signed_by: /etc/apt/keyrings/amneziawg.asc
+
+- name: Add AmneziaWG source repository
+  ansible.builtin.deb822_repository:
+    name: amneziawg-src
+    types:
+      - deb-src
+    uris:
+      - https://ppa.launchpadcontent.net/amnezia/ppa/ubuntu
+    suites:
+      - focal
+    components:
+      - main
+    signed_by: /etc/apt/keyrings/amneziawg.asc
+
+- name: Update apt cache after adding AmneziaWG repository
+  ansible.builtin.apt:
+    update_cache: true
+
+- name: Install AmneziaWG
+  ansible.builtin.apt:
+    name:
+      - amneziawg
+    state: present
+
+- name: Load AmneziaWG kernel module
+  community.general.modprobe:
+    name: amneziawg
+    state: present
+
+- name: Enable AmneziaWG module at boot
+  ansible.builtin.copy:
+    dest: /etc/modules-load.d/amneziawg.conf
+    content: |
+      amneziawg
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Verify AmneziaWG installation
+  ansible.builtin.command:
+    cmd: awg --version
+  register: amneziawg_version
+  changed_when: false
+
+- name: Show AmneziaWG version
+  ansible.builtin.debug:
+    msg: "{{ amneziawg_version.stdout }}"

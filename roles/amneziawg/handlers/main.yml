@@ -1,0 +1,7 @@
+---
+- name: Start amneziawg
+  ansible.builtin.systemd:
+    name: "awg-quick@awg0"
+    state: started
+    enabled: true
+    daemon_reload: true

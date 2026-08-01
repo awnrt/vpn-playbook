@@ -1,0 +1,427 @@
+#!/usr/bin/env bash
+#
+# Copyright (C) 2026 awy <awy [at] awy [dot] one>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+set -euo pipefail
+
+CONFIG_FILE="${CONFIG_FILE:-/etc/sing-box/config.json}"
+FLOW_VALUE="xtls-rprx-vision"
+SERVICE_NAME="${SERVICE_NAME:-sing-box}"
+
+usage() {
+  cat <<EOF
+Usage: $0 [options]
+
+Options:
+  -l                List all users from inbounds[].users[]
+  -a <name>         Add user
+  -d <name>         Delete user by name
+  -t <tag>          Target specific inbound tag for -a or -d
+  -c <file>         Path to sing-box config file
+  -h                Show this help
+
+Environment:
+  CONFIG_FILE       Default config path if -c is not provided
+  SERVICE_NAME      systemd service name (default: sing-box)
+
+Examples:
+  $0 -l
+  $0 -a alice -t vless-reality
+  $0 -d alice -t vless-reality
+EOF
+}
+
+require_cmd() {
+  local cmd="$1"
+  if ! command -v "$cmd" >/dev/null 2>&1; then
+    echo "Error: required command not found: $cmd" >&2
+    exit 1
+  fi
+}
+
+require_jq() {
+  require_cmd jq
+}
+
+require_sing_box() {
+  require_cmd sing-box
+}
+
+require_systemctl() {
+  require_cmd systemctl
+}
+
+check_config_file_exists() {
+  if [[ ! -f "$CONFIG_FILE" ]]; then
+    echo "Error: config file not found: $CONFIG_FILE" >&2
+    exit 1
+  fi
+}
+
+generate_uuid() {
+  require_sing_box
+  local uuid
+  uuid="$(sing-box generate uuid | tr -d '\r\n')"
+
+  if [[ -z "$uuid" ]]; then
+    echo "Error: failed to generate UUID with sing-box" >&2
+    exit 1
+  fi
+
+  printf '%s\n' "$uuid"
+}
+
+validate_config() {
+  require_sing_box
+  check_config_file_exists
+
+  if ! sing-box check -c "$CONFIG_FILE" >/dev/null; then
+    echo "Error: sing-box config validation failed: $CONFIG_FILE" >&2
+    exit 1
+  fi
+}
+
+validate_temp_config() {
+  local candidate="$1"
+  require_sing_box
+
+  if ! sing-box check -c "$candidate" >/dev/null; then
+    echo "Error: generated config did not pass 'sing-box check'" >&2
+    rm -f "$candidate"
+    exit 1
+  fi
+}
+
+reload_service() {
+  require_systemctl
+
+  if ! systemctl reload "$SERVICE_NAME"; then
+    echo "Error: failed to reload service: $SERVICE_NAME" >&2
+    exit 1
+  fi
+
+  echo "Reloaded service: $SERVICE_NAME"
+}
+
+list_users() {
+  require_jq
+  check_config_file_exists
+
+  jq -r '
+    .inbounds[]? as $inbound
+    | $inbound.users[]?
+    | [
+        ($inbound.tag // "-"),
+        ($inbound.type // "-"),
+        (.name // "-"),
+        (.uuid // "-"),
+        (.flow // "-")
+      ]
+    | @tsv
+  ' "$CONFIG_FILE" | awk 'BEGIN {
+      printf "%-24s %-12s %-24s %-38s %-20s\n", "INBOUND_TAG", "TYPE", "NAME", "UUID", "FLOW"
+      printf "%-24s %-12s %-24s %-38s %-20s\n", "------------------------", "------------", "------------------------", "--------------------------------------", "--------------------"
+    }
+    {
+      printf "%-24s %-12s %-24s %-38s %-20s\n", $1, $2, $3, $4, $5
+    }'
+}
+
+ensure_target_inbound_exists() {
+  local tag="$1"
+
+  if ! jq -e --arg tag "$tag" '.inbounds[]? | select(.tag == $tag)' "$CONFIG_FILE" >/dev/null; then
+    echo "Error: inbound tag not found: $tag" >&2
+    exit 1
+  fi
+}
+
+count_matching_inbounds_with_users() {
+  local tag="${1:-}"
+
+  if [[ -n "$tag" ]]; then
+    jq -r --arg tag "$tag" '
+      [.inbounds[]? | select(.tag == $tag and (.users | type == "array"))] | length
+    ' "$CONFIG_FILE"
+  else
+    jq -r '
+      [.inbounds[]? | select(.users | type == "array")] | length
+    ' "$CONFIG_FILE"
+  fi
+}
+
+user_exists() {
+  local name="$1"
+  local tag="${2:-}"
+
+  if [[ -n "$tag" ]]; then
+    jq -e --arg tag "$tag" --arg name "$name" '
+      .inbounds[]?
+      | select(.tag == $tag)
+      | .users[]?
+      | select(.name == $name)
+    ' "$CONFIG_FILE" >/dev/null
+  else
+    jq -e --arg name "$name" '
+      .inbounds[]?
+      | .users[]?
+      | select(.name == $name)
+    ' "$CONFIG_FILE" >/dev/null
+  fi
+}
+
+write_config_atomically() {
+  local candidate="$1"
+  mv "$candidate" "$CONFIG_FILE"
+}
+
+add_user() {
+  local name="$1"
+  local tag="${2:-}"
+  local uuid
+  local tmp_file
+  local inbound_count
+
+  require_jq
+  require_sing_box
+  check_config_file_exists
+  validate_config
+
+  if [[ -z "$name" ]]; then
+    echo "Error: user name cannot be empty" >&2
+    exit 1
+  fi
+
+  if [[ -n "$tag" ]]; then
+    ensure_target_inbound_exists "$tag"
+  fi
+
+  inbound_count="$(count_matching_inbounds_with_users "$tag")"
+  if [[ "$inbound_count" -eq 0 ]]; then
+    if [[ -n "$tag" ]]; then
+      echo "Error: inbound '$tag' does not contain users[]" >&2
+    else
+      echo "Error: no inbounds with users[] found" >&2
+    fi
+    exit 1
+  fi
+
+  if user_exists "$name" "$tag"; then
+    if [[ -n "$tag" ]]; then
+      echo "Error: user '$name' already exists in inbound '$tag'" >&2
+    else
+      echo "Error: user '$name' already exists" >&2
+    fi
+    exit 1
+  fi
+
+  uuid="$(generate_uuid)"
+  tmp_file="$(mktemp)"
+
+  if [[ -n "$tag" ]]; then
+    jq --arg tag "$tag" --arg name "$name" --arg uuid "$uuid" --arg flow "$FLOW_VALUE" '
+      .inbounds |= map(
+        if .tag == $tag and (.users | type == "array") then
+          .users += [{
+            "name": $name,
+            "uuid": $uuid,
+            "flow": $flow
+          }]
+        else
+          .
+        end
+      )
+    ' "$CONFIG_FILE" >"$tmp_file"
+  else
+    jq --arg name "$name" --arg uuid "$uuid" --arg flow "$FLOW_VALUE" '
+      .inbounds |= map(
+        if (.users | type == "array") then
+          .users += [{
+            "name": $name,
+            "uuid": $uuid,
+            "flow": $flow
+          }]
+        else
+          .
+        end
+      )
+    ' "$CONFIG_FILE" >"$tmp_file"
+  fi
+
+  validate_temp_config "$tmp_file"
+  write_config_atomically "$tmp_file"
+
+  if [[ -n "$tag" ]]; then
+    echo "Added user '$name' to inbound '$tag'"
+  else
+    echo "Added user '$name' to all matching inbounds"
+  fi
+
+  echo "UUID: $uuid"
+  echo "FLOW: $FLOW_VALUE"
+
+  reload_service
+}
+
+delete_user() {
+  local name="$1"
+  local tag="${2:-}"
+  local tmp_file
+  local before_count
+  local after_count
+  local deleted_count
+
+  require_jq
+  check_config_file_exists
+  validate_config
+
+  if [[ -z "$name" ]]; then
+    echo "Error: user name cannot be empty" >&2
+    exit 1
+  fi
+
+  if [[ -n "$tag" ]]; then
+    ensure_target_inbound_exists "$tag"
+  fi
+
+  before_count="$(
+    if [[ -n "$tag" ]]; then
+      jq -r --arg tag "$tag" --arg name "$name" '
+        [.inbounds[]?
+         | select(.tag == $tag)
+         | .users[]?
+         | select(.name == $name)] | length
+      ' "$CONFIG_FILE"
+    else
+      jq -r --arg name "$name" '
+        [.inbounds[]?
+         | .users[]?
+         | select(.name == $name)] | length
+      ' "$CONFIG_FILE"
+    fi
+  )"
+
+  if [[ "$before_count" -eq 0 ]]; then
+    if [[ -n "$tag" ]]; then
+      echo "Error: user '$name' not found in inbound '$tag'" >&2
+    else
+      echo "Error: user '$name' not found" >&2
+    fi
+    exit 1
+  fi
+
+  tmp_file="$(mktemp)"
+
+  if [[ -n "$tag" ]]; then
+    jq --arg tag "$tag" --arg name "$name" '
+      .inbounds |= map(
+        if .tag == $tag and (.users | type == "array") then
+          .users |= map(select(.name != $name))
+        else
+          .
+        end
+      )
+    ' "$CONFIG_FILE" >"$tmp_file"
+  else
+    jq --arg name "$name" '
+      .inbounds |= map(
+        if (.users | type == "array") then
+          .users |= map(select(.name != $name))
+        else
+          .
+        end
+      )
+    ' "$CONFIG_FILE" >"$tmp_file"
+  fi
+
+  validate_temp_config "$tmp_file"
+  write_config_atomically "$tmp_file"
+
+  after_count="$(
+    if [[ -n "$tag" ]]; then
+      jq -r --arg tag "$tag" --arg name "$name" '
+        [.inbounds[]?
+         | select(.tag == $tag)
+         | .users[]?
+         | select(.name == $name)] | length
+      ' "$CONFIG_FILE"
+    else
+      jq -r --arg name "$name" '
+        [.inbounds[]?
+         | .users[]?
+         | select(.name == $name)] | length
+      ' "$CONFIG_FILE"
+    fi
+  )"
+
+  deleted_count=$((before_count - after_count))
+
+  if [[ -n "$tag" ]]; then
+    echo "Deleted $deleted_count user(s) named '$name' from inbound '$tag'"
+  else
+    echo "Deleted $deleted_count user(s) named '$name'"
+  fi
+
+  reload_service
+}
+
+ACTION=""
+USER_NAME=""
+TARGET_TAG=""
+
+while getopts ":la:d:t:c:h" opt; do
+  case "$opt" in
+  l)
+    ACTION="list"
+    ;;
+  a)
+    ACTION="add"
+    USER_NAME="$OPTARG"
+    ;;
+  d)
+    ACTION="delete"
+    USER_NAME="$OPTARG"
+    ;;
+  t)
+    TARGET_TAG="$OPTARG"
+    ;;
+  c)
+    CONFIG_FILE="$OPTARG"
+    ;;
+  h)
+    usage
+    exit 0
+    ;;
+  :)
+    echo "Error: option -$OPTARG requires an argument." >&2
+    usage
+    exit 1
+    ;;
+  \?)
+    echo "Error: invalid option -$OPTARG" >&2
+    usage
+    exit 1
+    ;;
+  esac
+done
+
+case "${ACTION:-}" in
+list)
+  list_users
+  ;;
+add)
+  add_user "$USER_NAME" "$TARGET_TAG"
+  ;;
+delete)
+  delete_user "$USER_NAME" "$TARGET_TAG"
+  ;;
+*)
+  usage
+  exit 1
+  ;;
+esac

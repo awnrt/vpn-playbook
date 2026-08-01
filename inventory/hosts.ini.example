@@ -1,0 +1,3 @@
+[vpn]
+vpn01 ansible_host=vpn01.example.com
+vpn02 ansible_host=1.2.3.4

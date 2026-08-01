@@ -1,0 +1,7 @@
+---
+- name: Install sing-box
+  ansible.builtin.apt:
+    name: "sing-box"
+    state: present
+    update_cache: true
+  notify: Restart sing-box

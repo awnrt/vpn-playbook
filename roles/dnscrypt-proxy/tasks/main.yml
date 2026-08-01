@@ -1,0 +1,9 @@
+---
+- name: Install dnscrypt-proxy
+  ansible.builtin.include_tasks: install.yml
+
+- name: Configure dnscrypt-proxy
+  ansible.builtin.include_tasks: config.yml
+
+- name: Configure dnscrypt-proxy systemd
+  ansible.builtin.include_tasks: systemd.yml

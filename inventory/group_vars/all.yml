@@ -1,0 +1,46 @@
+ssh_port: 2222
+
+# AmneziaWG
+amneziawg_port: 8000
+amneziawg_address: "10.66.66.1/24"
+amneziawg_obfuscation:
+  jc: 8
+  jmin: 50
+  jmax: 1000
+  s1: 1
+  s2: 2
+  h1: 1
+  h2: 2
+  h3: 3
+  h4: 4
+
+# example:
+# amneziawg_clients:
+#     - public_key: "client1key"
+#       address: "10.66.66.2"
+#     - public_key: "client2key"
+#       address: "10.66.66.3"
+amneziawg_clients: []
+
+# sing-box
+singbox_reality_key_dir: /root/sing-box/reality
+singbox_reality_private_key_file: /root/sing-box/reality/private.key
+singbox_reality_public_key_file: /root/sing-box/reality/public.key
+
+singbox_tls_server_name: "www.somecooldomain.com"
+singbox_reality_handshake_server: "www.somecooldomain.com"
+singbox_reality_handshake_port: 443
+
+singbox_listen_address: "::"
+singbox_listen_port: 443
+
+# example:
+# singbox_users:
+#   - name: "qweqweq"
+#     uuid: "983..."
+#     flow: "xtls-rprx-vision"
+#
+#   - name: "user2"
+#     uuid: "12345678-aaaa-bbbb-cccc"
+#     flow: "xtls-rprx-vision"
+singbox_users: []

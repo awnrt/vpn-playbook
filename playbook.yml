@@ -1,0 +1,12 @@
+---
+- name: Configure VPN servers
+  hosts: vpn
+  become: true
+
+  roles:
+    - ssh
+    - firewall
+    - sysctl
+    - amneziawg
+    - dnscrypt-proxy
+    - sing-box

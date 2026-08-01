@@ -1,0 +1,6 @@
+---
+- name: Install AmneziaWG
+  ansible.builtin.include_tasks: install.yml
+
+- name: Configure AmneziaWG
+  ansible.builtin.include_tasks: config.yml

@@ -1,0 +1,7 @@
+---
+- name: Install dnscrypt-proxy
+  ansible.builtin.apt:
+    name:
+      - dnscrypt-proxy
+    state: present
+    update_cache: true

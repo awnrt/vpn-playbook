@@ -1,0 +1,16 @@
+- name: Create dnscrypt-proxy systemd override directory
+  ansible.builtin.file:
+    path: /etc/systemd/system/dnscrypt-proxy.service.d
+    state: directory
+    mode: "0755"
+
+- name: Allow dnscrypt-proxy to bind DNS port
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/dnscrypt-proxy.service.d/capabilities.conf
+    content: |
+      [Service]
+      AmbientCapabilities=CAP_NET_BIND_SERVICE
+      CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+  notify:
+    - Reload systemd
+    - Restart dnscrypt-proxy

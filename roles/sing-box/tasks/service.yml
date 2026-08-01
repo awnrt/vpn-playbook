@@ -1,0 +1,6 @@
+---
+- name: Ensure sing-box is enabled and running
+  ansible.builtin.service:
+    name: "sing-box"
+    state: started
+    enabled: true
