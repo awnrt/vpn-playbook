@@ -1,5 +1,5 @@
 [Interface]
-Address = {{ amneziawg_address }}
+Address = {{ amneziawg_address }}{% if amneziawg_address_v6 is defined %}, {{ amneziawg_address_v6 }}{% endif %}
 ListenPort = {{ amneziawg_port }}
 PrivateKey = {{ server_private_key }}
 
@@ -32,6 +32,6 @@ H4 = {{ amneziawg_obfuscation.h4 }}
 {% for client in amneziawg_clients %}
 [Peer]
 PublicKey = {{ client.public_key }}
-AllowedIPs = {{ client.address }}/32
+AllowedIPs = {{ client.address }}/32{% if client.ipv6_address is defined %}, {{ client.ipv6_address }}/128{% endif %}
 
 {% endfor %}
