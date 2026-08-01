@@ -13,7 +13,6 @@
       }
     ],
     "final": "mullvad",
-    "reverse_mapping": true
   },
   "inbounds": [
     {
@@ -56,6 +55,10 @@
     "rules": [
       {
         "action": "sniff"
+      },
+      {
+        "protocol": "dns",
+        "action": "hijack-dns"
       }
     ],
     "auto_detect_interface": true,
