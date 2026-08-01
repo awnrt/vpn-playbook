@@ -8,7 +8,7 @@
     content: |
       # Managed by Ansible
 
-      PermitRootLogin no
+      PermitRootLogin yes
       PasswordAuthentication no
       PubkeyAuthentication yes
       PermitEmptyPasswords no
