@@ -24,16 +24,11 @@
     - { port: "443", proto: udp }
     - { port: "{{ amneziawg_port }}", proto: udp }
 
-- name: Allow DNS from AmneziaWG clients
+- name: Allow all incoming traffic on AmneziaWG interface
   community.general.ufw:
     rule: allow
-    interface: "awg0"
     direction: in
-    port: "53"
-    proto: "{{ item }}"
-  loop:
-    - udp
-    - tcp
+    interface: awg0
 
 - name: Enable UFW
   community.general.ufw:
