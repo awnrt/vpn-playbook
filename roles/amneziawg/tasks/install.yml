@@ -4,7 +4,7 @@
     name:
       - gnupg2
       - ca-certificates
-      - linux-headers-{{ ansible_facts['kernel'] }}
+      - linux-headers-amd64
       - python3-apt
       - python3-debian
       - dkms
