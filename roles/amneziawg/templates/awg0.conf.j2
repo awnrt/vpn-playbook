@@ -1,21 +1,22 @@
 [Interface]
 Address = {{ amneziawg_address }}{% if amneziawg_address_v6 is defined %}, {{ amneziawg_address_v6 }}{% endif %}
+
 ListenPort = {{ amneziawg_port }}
 PrivateKey = {{ server_private_key }}
 
 PostUp = iptables -A FORWARD -i %i -j ACCEPT
 PostUp = iptables -A FORWARD -o %i -j ACCEPT
-PostUp = iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+PostUp = iptables -t nat -A POSTROUTING -o {{ ansible_default_ipv4.interface }} -j MASQUERADE
 PostUp = ip6tables -A FORWARD -i %i -j ACCEPT
 PostUp = ip6tables -A FORWARD -o %i -j ACCEPT
-PostUp = ip6tables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+PostUp = ip6tables -t nat -A POSTROUTING -o {{ ansible_default_ipv4.interface }} -j MASQUERADE
 
 PostDown = iptables -D FORWARD -i %i -j ACCEPT || true
 PostDown = iptables -D FORWARD -o %i -j ACCEPT || true
-PostDown = iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE || true
+PostDown = iptables -t nat -D POSTROUTING -o {{ ansible_default_ipv4.interface }} -j MASQUERADE || true
 PostDown = ip6tables -D FORWARD -i %i -j ACCEPT || true
 PostDown = ip6tables -D FORWARD -o %i -j ACCEPT || true
-PostDown = ip6tables -t nat -D POSTROUTING -o eth0 -j MASQUERADE || true
+PostDown = ip6tables -t nat -D POSTROUTING -o {{ ansible_default_ipv4.interface }} -j MASQUERADE || true
 
 Jc = {{ amneziawg_obfuscation.jc }}
 Jmin = {{ amneziawg_obfuscation.jmin }}
@@ -32,6 +33,6 @@ H4 = {{ amneziawg_obfuscation.h4 }}
 {% for client in amneziawg_clients %}
 [Peer]
 PublicKey = {{ client.public_key }}
-AllowedIPs = {{ client.address }}/32{% if client.ipv6_address is defined %}, {{ client.ipv6_address }}/128{% endif %}
+AllowedIPs = {{ client.allowed_ips | join(', ') }}
 
 {% endfor %}

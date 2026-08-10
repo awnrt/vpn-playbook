@@ -19,11 +19,11 @@ amneziawg_obfuscation:
 # amneziawg_clients:
 #   - public_key: "client1key"
 #     allowed_ips:
-#       - "10.66.66.2"
-#       - "fd42:66:66::2/64"
+#       - "10.66.66.2/32"
+#       - "fd42:66:66::2/128"
 #   - public_key: "client2key"
 #     allowed_ips:
-#       - "10.66.66.3"
+#       - "10.66.66.3/32"
 amneziawg_clients: []
 
 # sing-box
