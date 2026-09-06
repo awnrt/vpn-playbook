@@ -6,11 +6,12 @@ listen_addresses = [
 ]
 server_names = ['mullvad-doh']
 
-[query_log]
-  file = '/var/log/dnscrypt-proxy/query.log'
-
-[nx_log]
-  file = '/var/log/dnscrypt-proxy/nx.log'
+# logs
+# [query_log]
+#   file = '/var/log/dnscrypt-proxy/query.log'
+#
+# [nx_log]
+#   file = '/var/log/dnscrypt-proxy/nx.log'
 
 [sources]
   [sources.'public-resolvers']
