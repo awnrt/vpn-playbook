@@ -1,0 +1,25 @@
+---
+dnsproxy_version: "0.76.2"
+
+dnsproxy_install_path: "/usr/local/bin/dnsproxy"
+dnsproxy_service_name: "dnsproxy"
+dnsproxy_service_path: "/etc/systemd/system/dnsproxy.service"
+
+dnsproxy_listen: "::"
+dnsproxy_port: 53
+dnsproxy_upstream: "quic://dns10.quad9.net/dns-query"
+dnsproxy_bootstrap: "9.9.9.9"
+
+dnsproxy_cache_size: 16777216
+
+dnsproxy_arch_map:
+  x86_64: amd64
+  aarch64: arm64
+  armv7l: armv7
+
+dnsproxy_os: "linux"
+dnsproxy_arch: "{{ dnsproxy_arch_map[ansible_architecture] | default(ansible_architecture) }}"
+
+dnsproxy_download_url: >-
+  https://github.com/AdguardTeam/dnsproxy/releases/download/v{{ dnsproxy_version }}/
+  dnsproxy-{{ dnsproxy_version }}.{{ dnsproxy_os }}-{{ dnsproxy_arch }}.tar.gz

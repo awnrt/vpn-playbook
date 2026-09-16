@@ -8,5 +8,6 @@
     - firewall
     - sysctl
     - amneziawg
-    - dnscrypt-proxy
+    # - dnscrypt-proxy
+    - dnsproxy
     - sing-box

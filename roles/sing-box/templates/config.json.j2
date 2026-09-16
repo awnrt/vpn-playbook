@@ -7,12 +7,12 @@
     "servers": [
       {
         "type": "udp",
-        "tag": "mullvad",
+        "tag": "quad9",
         "server": "127.0.0.1",
-        "server_port": 5300
+        "server_port": 53
       }
     ],
-    "final": "mullvad",
+    "final": "quad9",
   },
   "inbounds": [
     {
@@ -51,7 +51,7 @@
     }
   ],
   "route": {
-    "default_domain_resolver": "mullvad",
+    "default_domain_resolver": "quad9",
     "rules": [
       {
         "action": "sniff"

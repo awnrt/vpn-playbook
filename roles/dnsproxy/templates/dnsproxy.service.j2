@@ -1,0 +1,13 @@
+[Unit]
+Description=AdGuard DNS Proxy
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart={{ dnsproxy_install_path }} --listen={{ dnsproxy_listen }} --port={{ dnsproxy_port }} --upstream={{ dnsproxy_upstream }} --dnssec --cache --cache-size={{ dnsproxy_cache_size }} -b {{ dnsproxy_bootstrap }}
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

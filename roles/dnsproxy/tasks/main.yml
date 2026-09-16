@@ -1,0 +1,88 @@
+---
+- name: Validate supported architecture
+  ansible.builtin.assert:
+    that:
+      - ansible_architecture in dnsproxy_arch_map
+    fail_msg: >-
+      Unsupported architecture: {{ ansible_architecture }}
+
+- name: Create temporary directory
+  ansible.builtin.tempfile:
+    state: directory
+    prefix: dnsproxy-
+  register: dnsproxy_tmp
+
+- name: Download dnsproxy archive
+  ansible.builtin.get_url:
+    url: "{{ dnsproxy_download_url | regex_replace('\\s+', '') }}"
+    dest: "{{ dnsproxy_tmp.path }}/dnsproxy.tar.gz"
+    mode: "0644"
+
+- name: Extract dnsproxy archive
+  ansible.builtin.unarchive:
+    src: "{{ dnsproxy_tmp.path }}/dnsproxy.tar.gz"
+    dest: "{{ dnsproxy_tmp.path }}"
+    remote_src: true
+
+- name: Install dnsproxy binary
+  ansible.builtin.copy:
+    src: "{{ dnsproxy_tmp.path }}/dnsproxy"
+    dest: "{{ dnsproxy_install_path }}"
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install dnsproxy systemd service
+  ansible.builtin.template:
+    src: dnsproxy.service.j2
+    dest: "{{ dnsproxy_service_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart dnsproxy
+
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Enable and start dnsproxy
+  ansible.builtin.systemd:
+    name: "{{ dnsproxy_service_name }}"
+    enabled: true
+    state: started
+
+- name: Wait for dnsproxy DNS port
+  ansible.builtin.wait_for:
+    host: "127.0.0.1"
+    port: "{{ dnsproxy_port }}"
+    state: started
+    timeout: 30
+
+- name: Disable systemd-resolved
+  ansible.builtin.systemd:
+    name: systemd-resolved
+    state: stopped
+    enabled: false
+    masked: true
+  when: ansible_service_mgr == "systemd"
+
+- name: Remove existing resolv.conf
+  ansible.builtin.file:
+    path: /etc/resolv.conf
+    state: absent
+
+- name: Configure dnsproxy as system resolver
+  ansible.builtin.copy:
+    dest: /etc/resolv.conf
+    content: |
+      nameserver 127.0.0.1
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Remove temporary directory
+  ansible.builtin.file:
+    path: "{{ dnsproxy_tmp.path }}"
+    state: absent
