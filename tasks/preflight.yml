@@ -16,6 +16,9 @@
       - amneziawg_clients is sequence and amneziawg_clients is not string
       - amneziawg_clients is not mapping
       - singbox_users is sequence and singbox_users is not string and singbox_users is not mapping
+      - singbox_custom_config_files | default([]) is sequence
+      - singbox_custom_config_files | default([]) is not string
+      - singbox_custom_config_files | default([]) is not mapping
       - (amneziawg_obfuscation | default({})) is mapping
       - (amneziawg_obfuscation | default({}) | dict2items | map(attribute='key') | list | difference(['s1', 's2', 'h1', 'h2', 'h3', 'h4']) | length) == 0
       - singbox_tls_server_name | length > 0
@@ -29,6 +32,24 @@
     fail_msg: >-
       Invalid deployment settings. Check dns_provider, port ranges, required
       network facts, and optional key inputs.
+
+- name: Validate custom sing-box configuration fragment entries
+  ansible.builtin.assert:
+    that:
+      - item is mapping
+      - item.src is defined
+      - item.src | length > 0
+      - item.dest is defined
+      - item.dest is match('^[0-9]{2}-[A-Za-z0-9._-]+\\.json$')
+      - item.dest not in ['00-log.json', '20-dns.json', '30-inbound-vless-reality.json', '40-outbound-direct.json', '50-route.json']
+    fail_msg: "Invalid custom sing-box fragment entry: {{ item }}"
+  loop: "{{ singbox_custom_config_files | default([]) }}"
+
+- name: Require unique custom sing-box fragment filenames
+  ansible.builtin.assert:
+    that:
+      - (singbox_custom_config_files | default([]) | map(attribute='dest') | unique | list | length) == (singbox_custom_config_files | default([]) | length)
+    fail_msg: Custom sing-box fragment filenames must be unique.
 
 - name: Validate configured AmneziaWG obfuscation values
   ansible.builtin.assert:

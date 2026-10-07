@@ -1,11 +1,24 @@
 ---
-- name: Ensure sing-box config directory exists
+- name: Ensure sing-box config directories exist
   ansible.builtin.file:
-    path: "/etc/sing-box"
+    path: "{{ item.path }}"
     state: directory
     owner: root
-    group: root
-    mode: "0755"
+    group: "{{ item.group }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: "{{ singbox_config_directory }}", group: "sing-box", mode: "0750" }
+
+- name: Check for legacy monolithic sing-box configuration
+  ansible.builtin.stat:
+    path: /etc/sing-box/config.json
+  register: singbox_legacy_config
+
+- name: Remove legacy monolithic sing-box configuration
+  ansible.builtin.file:
+    path: /etc/sing-box/config.json
+    state: absent
+  when: singbox_legacy_config.stat.exists
 
 - name: Ensure Reality key directory exists
   ansible.builtin.file:
@@ -101,12 +114,45 @@
     singbox_reality_public_key: "{{ singbox_reality_public_key_raw.content | b64decode | trim }}"
   no_log: true
 
-- name: Render sing-box configuration
-  ansible.builtin.template:
-    src: config.json.j2
-    dest: "/etc/sing-box/config.json"
+- name: Install static sing-box configuration fragments
+  ansible.builtin.copy:
+    src: "config/{{ item }}"
+    dest: "{{ singbox_config_directory }}/{{ item }}"
     owner: root
-    group: root
+    group: "sing-box"
     mode: "0640"
-    validate: "sing-box check -c %s"
+  loop:
+    - 00-log.json
+    - 20-dns.json
+    - 40-outbound-direct.json
+    - 50-route.json
   notify: Restart sing-box
+
+- name: Render VLESS Reality inbound fragment
+  ansible.builtin.template:
+    src: 30-inbound-vless-reality.json.j2
+    dest: "{{ singbox_config_directory }}/30-inbound-vless-reality.json"
+    owner: root
+    group: "sing-box"
+    mode: "0640"
+    validate: "python3 -m json.tool %s"
+  notify: Restart sing-box
+
+- name: Install custom sing-box configuration fragments
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "{{ singbox_config_directory }}/{{ item.dest }}"
+    owner: root
+    group: "sing-box"
+    mode: "0640"
+  loop: "{{ singbox_custom_config_files | default([]) }}"
+  notify: Restart sing-box
+
+- name: Validate merged sing-box configuration
+  ansible.builtin.command:
+    argv:
+      - sing-box
+      - -C
+      - "{{ singbox_config_directory }}"
+      - check
+  changed_when: false

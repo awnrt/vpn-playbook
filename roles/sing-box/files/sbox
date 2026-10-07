@@ -9,7 +9,8 @@
 
 set -euo pipefail
 
-CONFIG_FILE="${CONFIG_FILE:-/etc/sing-box/config.json}"
+CONFIG_FILE="${CONFIG_FILE:-/etc/sing-box/30-inbound-vless-reality.json}"
+CONFIG_DIR="${CONFIG_DIR:-}"
 FLOW_VALUE="xtls-rprx-vision"
 SERVICE_NAME="${SERVICE_NAME:-sing-box}"
 
@@ -22,11 +23,12 @@ Options:
   -a <name>         Add user
   -d <name>         Delete user by name
   -t <tag>          Target specific inbound tag for -a or -d
-  -c <file>         Path to sing-box config file
+  -c <file>         Path to the VLESS inbound fragment
   -h                Show this help
 
 Environment:
   CONFIG_FILE       Default config path if -c is not provided
+  CONFIG_DIR        Configuration directory (default: directory containing CONFIG_FILE)
   SERVICE_NAME      systemd service name (default: sing-box)
 
 Examples:
@@ -80,21 +82,32 @@ validate_config() {
   require_sing_box
   check_config_file_exists
 
-  if ! sing-box check -c "$CONFIG_FILE" >/dev/null; then
-    echo "Error: sing-box config validation failed: $CONFIG_FILE" >&2
+  if ! sing-box -C "$CONFIG_DIR" check >/dev/null; then
+    echo "Error: sing-box configuration directory validation failed: $CONFIG_DIR" >&2
     exit 1
   fi
 }
 
 validate_temp_config() {
   local candidate="$1"
+  local candidate_dir
   require_sing_box
 
-  if ! sing-box check -c "$candidate" >/dev/null; then
+  candidate_dir="$(mktemp -d)"
+  if ! cp -a "$CONFIG_DIR/." "$candidate_dir/" || ! cp "$candidate" "$candidate_dir/$(basename "$CONFIG_FILE")"; then
+    rm -rf -- "$candidate_dir"
+    echo "Error: failed to prepare temporary sing-box configuration" >&2
+    exit 1
+  fi
+
+  if ! sing-box -C "$candidate_dir" check >/dev/null; then
+    rm -rf -- "$candidate_dir"
     echo "Error: generated config did not pass 'sing-box check'" >&2
     rm -f "$candidate"
     exit 1
   fi
+
+  rm -rf -- "$candidate_dir"
 }
 
 reload_service() {
@@ -177,7 +190,9 @@ user_exists() {
 
 write_config_atomically() {
   local candidate="$1"
-  mv "$candidate" "$CONFIG_FILE"
+  chmod --reference="$CONFIG_FILE" "$candidate"
+  chown --reference="$CONFIG_FILE" "$candidate"
+  mv -f -- "$candidate" "$CONFIG_FILE"
 }
 
 add_user() {
@@ -221,7 +236,7 @@ add_user() {
   fi
 
   uuid="$(generate_uuid)"
-  tmp_file="$(mktemp)"
+  tmp_file="$(mktemp "${CONFIG_FILE}.XXXXXX")"
 
   if [[ -n "$tag" ]]; then
     jq --arg tag "$tag" --arg name "$name" --arg uuid "$uuid" --arg flow "$FLOW_VALUE" '
@@ -315,7 +330,7 @@ delete_user() {
     exit 1
   fi
 
-  tmp_file="$(mktemp)"
+  tmp_file="$(mktemp "${CONFIG_FILE}.XXXXXX")"
 
   if [[ -n "$tag" ]]; then
     jq --arg tag "$tag" --arg name "$name" '
@@ -409,6 +424,8 @@ while getopts ":la:d:t:c:h" opt; do
     ;;
   esac
 done
+
+CONFIG_DIR="${CONFIG_DIR:-$(dirname "$CONFIG_FILE")}"
 
 case "${ACTION:-}" in
 list)

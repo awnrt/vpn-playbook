@@ -30,6 +30,12 @@ amneziawg_obfuscation:
 amneziawg_clients: []
 
 # sing-box
+singbox_config_directory: /etc/sing-box
+singbox_custom_config_files: []
+# To manage extra fragments through Ansible, add entries like:
+# singbox_custom_config_files:
+#   - src: "{{ playbook_dir }}/singbox-custom/32-inbound-hysteria2.json"
+#     dest: "32-inbound-hysteria2.json"
 singbox_reality_key_dir: /root/sing-box/reality
 singbox_reality_private_key_file: /root/sing-box/reality/private.key
 singbox_reality_public_key_file: /root/sing-box/reality/public.key

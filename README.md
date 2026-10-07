@@ -92,6 +92,22 @@ keys, set `amneziawg_private_key` for AmneziaWG, and set both
 Reality in `inventory/group_vars/all.yml`. Leave these variables undefined to
 retain an existing keypair or generate one when no key files exist.
 
+sing-box configuration is loaded from `/etc/sing-box/` as numbered JSON
+fragments. The role manages the default log, DNS, outbound, and route fragments,
+and renders `30-inbound-vless-reality.json` from inventory variables. To add
+your own fragment, keep its source in the repository and add it to
+`singbox_custom_config_files`, for example:
+
+```yaml
+singbox_custom_config_files:
+  - src: "{{ playbook_dir }}/singbox-custom/32-inbound-hysteria2.json"
+    dest: "32-inbound-hysteria2.json"
+```
+
+This keeps custom fragments reproducible and validates the merged config on
+each apply. Files copied directly to the server are also loaded and are left
+alone by Ansible, but managing them through inventory is easier to reproduce.
+
 ## Services
 
 The playbook configures:

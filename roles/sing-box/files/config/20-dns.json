@@ -1,0 +1,13 @@
+{
+  "dns": {
+    "servers": [
+      {
+        "type": "udp",
+        "tag": "local-dns",
+        "server": "127.0.0.1",
+        "server_port": 53
+      }
+    ],
+    "final": "local-dns"
+  }
+}
