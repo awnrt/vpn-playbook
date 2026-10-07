@@ -153,6 +153,15 @@
   when: not (singbox_tor_enabled | bool)
   notify: Restart sing-box
 
+- name: Ensure sing-box Tor data directory exists
+  ansible.builtin.file:
+    path: /srv/sing-box/tor
+    state: directory
+    owner: sing-box
+    group: sing-box
+    mode: "0750"
+  when: singbox_tor_enabled | bool
+
 - name: Render VLESS Reality inbound fragment
   ansible.builtin.template:
     src: 30-inbound-vless-reality.json.j2
