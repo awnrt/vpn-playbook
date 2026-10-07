@@ -128,6 +128,31 @@
     - 50-route.json
   notify: Restart sing-box
 
+- name: Install optional sing-box Tor configuration fragments
+  ansible.builtin.copy:
+    src: "config/{{ item }}"
+    dest: "{{ singbox_config_directory }}/{{ item }}"
+    owner: root
+    group: "sing-box"
+    mode: "0640"
+  loop:
+    - 31-inbound-tor.json
+    - 41-outbound-tor.json
+    - 51-route-tor.json
+  when: singbox_tor_enabled | bool
+  notify: Restart sing-box
+
+- name: Remove disabled sing-box Tor configuration fragments
+  ansible.builtin.file:
+    path: "{{ singbox_config_directory }}/{{ item }}"
+    state: absent
+  loop:
+    - 31-inbound-tor.json
+    - 41-outbound-tor.json
+    - 51-route-tor.json
+  when: not (singbox_tor_enabled | bool)
+  notify: Restart sing-box
+
 - name: Render VLESS Reality inbound fragment
   ansible.builtin.template:
     src: 30-inbound-vless-reality.json.j2

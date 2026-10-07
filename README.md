@@ -108,6 +108,11 @@ This keeps custom fragments reproducible and validates the merged config on
 each apply. Files copied directly to the server are also loaded and are left
 alone by Ansible, but managing them through inventory is easier to reproduce.
 
+The optional Tor inbound and outbound fragments are enabled by setting
+`singbox_tor_enabled: true` in `inventory/group_vars/all.yml`. This also
+installs the `tor` package. Leaving it false (the default) removes those three
+fragments from `/etc/sing-box/`.
+
 ## Services
 
 The playbook configures:

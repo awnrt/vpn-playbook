@@ -1,0 +1,12 @@
+{
+  "route": {
+    "rules": [
+      {
+        "inbound": ["tor-in"],
+        "action": "route",
+        "outbound": "onions"
+      }
+    ]
+  }
+}
+

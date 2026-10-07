@@ -1,0 +1,14 @@
+{
+  "outbounds": [
+    {
+      "type": "tor",
+      "tag": "onions",
+      "executable_path": "/usr/bin/tor",
+      "extra_args": [],
+      "data_directory": "/srv/sing-box/tor",
+      "torrc": {
+        "ClientOnly":"1"
+      }
+    }
+  ]
+}

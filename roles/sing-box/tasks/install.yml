@@ -5,3 +5,9 @@
     state: present
     update_cache: true
   notify: Restart sing-box
+
+- name: Install Tor for sing-box Tor outbound
+  ansible.builtin.apt:
+    name: tor
+    state: present
+  when: singbox_tor_enabled | bool
