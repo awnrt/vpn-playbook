@@ -5,6 +5,32 @@
     update_cache: true
     policy_rc_d: 101
 
+- name: Ensure Unbound state directory exists
+  ansible.builtin.file:
+    path: /var/lib/unbound
+    state: directory
+    owner: unbound
+    group: unbound
+    mode: "0755"
+
+- name: Initialize Unbound DNSSEC trust anchor from Debian root data
+  ansible.builtin.copy:
+    src: /usr/share/dns/root.key
+    dest: /var/lib/unbound/root.key
+    remote_src: true
+    force: false
+    owner: unbound
+    group: unbound
+    mode: "0644"
+
+- name: Ensure Unbound can maintain its DNSSEC trust anchor
+  ansible.builtin.file:
+    path: /var/lib/unbound/root.key
+    state: file
+    owner: unbound
+    group: unbound
+    mode: "0644"
+
 - name: Ensure Unbound config directory exists
   ansible.builtin.file:
     path: /etc/unbound/unbound.conf.d
