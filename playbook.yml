@@ -9,5 +9,6 @@
     - sysctl
     - amneziawg
     # - dnscrypt-proxy
-    - dnsproxy
+    # - dnsproxy
+    - unbound
     - sing-box

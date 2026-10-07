@@ -7,12 +7,12 @@
     "servers": [
       {
         "type": "udp",
-        "tag": "quad9",
+        "tag": "unbound",
         "server": "127.0.0.1",
         "server_port": 53
       }
     ],
-    "final": "quad9",
+    "final": "unbound",
   },
   "inbounds": [
     {
@@ -51,7 +51,7 @@
     }
   ],
   "route": {
-    "default_domain_resolver": "quad9",
+    "default_domain_resolver": "unbound",
     "rules": [
       {
         "action": "sniff"

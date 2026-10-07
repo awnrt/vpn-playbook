@@ -1,0 +1,35 @@
+- name: Disable systemd-resolved
+  ansible.builtin.systemd:
+    name: systemd-resolved
+    enabled: false
+    state: stopped
+
+- name: Install Unbound
+  ansible.builtin.apt:
+    name: unbound
+    state: present
+    update_cache: true
+
+- name: Ensure Unbound config directory exists
+  ansible.builtin.file:
+    path: /etc/unbound/unbound.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Configure Unbound
+  ansible.builtin.template:
+    src: unbound.conf.j2
+    dest: /etc/unbound/unbound.conf
+    owner: root
+    group: root
+    mode: "0644"
+    validate: "unbound-checkconf %s"
+  notify: Restart unbound
+
+- name: Ensure Unbound is enabled and running
+  ansible.builtin.systemd:
+    name: unbound
+    enabled: true
+    state: started
