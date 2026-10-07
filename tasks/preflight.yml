@@ -54,8 +54,15 @@
 
 - name: Validate configured AmneziaWG obfuscation values
   ansible.builtin.assert:
-    that: item.value is number
-    fail_msg: "AmneziaWG obfuscation value {{ item.key }} must be numeric."
+    that:
+      - >-
+        item.value is number or
+        (item.key in ['h1', 'h2', 'h3', 'h4'] and
+        item.value is string and
+        item.value is match('^[0-9]+-[0-9]+$'))
+    fail_msg: >-
+      AmneziaWG obfuscation value {{ item.key }} must be numeric;
+      h1-h4 also accept an unsigned range in min-max format.
   loop: "{{ amneziawg_obfuscation | default({}) | dict2items }}"
 
 - name: Validate AmneziaWG IPv4 interface address

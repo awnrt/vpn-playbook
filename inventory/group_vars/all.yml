@@ -11,6 +11,7 @@ amneziawg_address_v6: "fd42:66:66::1/64"   # optional
 # amneziawg_private_key: ""
 amneziawg_obfuscation:
   # Optional server-side values; remove any entry to omit it from awg0.conf.
+  # h1-h4 also accept a range string, for example: h2: "100-200".
   s1: 1
   s2: 2
   h1: 1
