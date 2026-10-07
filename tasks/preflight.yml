@@ -1,0 +1,107 @@
+---
+- name: Validate top-level deployment settings
+  ansible.builtin.assert:
+    that:
+      - dns_provider in ['unbound', 'dnscrypt-proxy', 'dnsproxy']
+      - dns_provider != 'dnsproxy' or (dnsproxy_port | default(53) | int) == 53
+      - ansible_distribution == 'Debian'
+      - ansible_architecture == 'x86_64'
+      - ansible_service_mgr == 'systemd'
+      - ssh_port | int >= 1 and ssh_port | int <= 65535
+      - amneziawg_port | int >= 1 and amneziawg_port | int <= 65535
+      - singbox_listen_port | int >= 1 and singbox_listen_port | int <= 65535
+      - (singbox_listen_port | int) != (ssh_port | int)
+      - (singbox_listen_port | int) != 53
+      - singbox_reality_handshake_port | int >= 1 and singbox_reality_handshake_port | int <= 65535
+      - amneziawg_clients is sequence and amneziawg_clients is not string
+      - amneziawg_clients is not mapping
+      - singbox_users is sequence and singbox_users is not string and singbox_users is not mapping
+      - amneziawg_obfuscation is mapping
+      - (['jc', 'jmin', 'jmax', 's1', 's2', 'h1', 'h2', 'h3', 'h4'] | difference(amneziawg_obfuscation.keys() | list) | length) == 0
+      - singbox_tls_server_name | length > 0
+      - singbox_reality_handshake_server | length > 0
+      - ansible_default_ipv4 is defined and ansible_default_ipv4.interface is defined
+      - (amneziawg_private_key is not defined) or (amneziawg_private_key | trim | length > 0)
+      - (amneziawg_private_key is not defined) or ((amneziawg_private_key | trim) is match('^[A-Za-z0-9+/]{43}=$'))
+      - (singbox_reality_private_key is defined) == (singbox_reality_public_key is defined)
+      - (singbox_reality_private_key is not defined) or (singbox_reality_private_key | trim | length > 0)
+      - (singbox_reality_public_key is not defined) or (singbox_reality_public_key | trim | length > 0)
+    fail_msg: >-
+      Invalid deployment settings. Check dns_provider, port ranges, required
+      network facts, and optional key inputs.
+
+- name: Validate AmneziaWG IPv4 interface address
+  ansible.builtin.command:
+    argv:
+      - python3
+      - -c
+      - "import ipaddress, sys; assert ipaddress.ip_interface(sys.argv[1]).version == 4"
+      - "{{ amneziawg_address }}"
+  changed_when: false
+
+- name: Validate optional AmneziaWG IPv6 interface address
+  ansible.builtin.command:
+    argv:
+      - python3
+      - -c
+      - "import ipaddress, sys; assert ipaddress.ip_interface(sys.argv[1]).version == 6"
+      - "{{ amneziawg_address_v6 }}"
+  changed_when: false
+  when: amneziawg_address_v6 is defined
+
+- name: Validate AmneziaWG client entries
+  ansible.builtin.assert:
+    that:
+      - item.public_key is defined
+      - item.public_key is match('^[A-Za-z0-9+/]{43}=$')
+      - item.allowed_ips is defined
+      - item.allowed_ips is sequence
+      - item.allowed_ips is not string
+      - item.allowed_ips is not mapping
+      - item.allowed_ips | length > 0
+    fail_msg: "Invalid AmneziaWG client entry: {{ item }}"
+  loop: "{{ amneziawg_clients }}"
+
+- name: Validate AmneziaWG client allowed IPs
+  ansible.builtin.command:
+    argv:
+      - python3
+      - -c
+      - "import ipaddress, sys; ipaddress.ip_network(sys.argv[1], strict=False)"
+      - "{{ item }}"
+  changed_when: false
+  loop: "{{ amneziawg_clients | map(attribute='allowed_ips') | flatten }}"
+
+- name: Reject duplicate AmneziaWG client allowed IPs
+  ansible.builtin.assert:
+    that:
+      - (amneziawg_clients | map(attribute='allowed_ips') | flatten | unique | list | length) == (amneziawg_clients | map(attribute='allowed_ips') | flatten | length)
+    fail_msg: Client allowed IP entries must be unique.
+
+- name: Reject overlapping AmneziaWG client networks
+  ansible.builtin.command:
+    argv:
+      - python3
+      - -c
+      - >-
+        import ipaddress, json, sys;
+        nets = [(i, ipaddress.ip_network(net, strict=False))
+                for i, client in enumerate(json.loads(sys.argv[1]))
+                for net in client['allowed_ips']];
+        assert all(i == j or a.version != b.version or not a.overlaps(b)
+                   for n, (i, a) in enumerate(nets)
+                   for j, b in nets[n + 1:])
+      - "{{ amneziawg_clients | to_json }}"
+  changed_when: false
+
+- name: Validate sing-box user entries
+  ansible.builtin.assert:
+    that:
+      - item.name is defined
+      - item.name | length > 0
+      - item.uuid is defined
+      - item.uuid is match('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')
+      - item.flow is defined
+      - item.flow | length > 0
+    fail_msg: "Invalid sing-box user entry: {{ item }}"
+  loop: "{{ singbox_users }}"

@@ -1,0 +1,45 @@
+---
+- name: Gather resolver service state
+  ansible.builtin.service_facts:
+
+- name: Stop and disable unselected DNS services
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: stopped
+    enabled: false
+  loop:
+    - unbound.service
+    - dnscrypt-proxy.service
+    - dnscrypt-proxy.socket
+    - dnsproxy.service
+  when:
+    - item.split('.')[0] != dns_provider
+    - item in ansible_facts.services
+
+- name: Stop and disable systemd-resolved before starting the selected DNS service
+  ansible.builtin.systemd:
+    name: systemd-resolved.service
+    state: stopped
+    enabled: false
+  when: "'systemd-resolved.service' in ansible_facts.services"
+
+- name: Inspect existing resolver configuration path
+  ansible.builtin.stat:
+    path: /etc/resolv.conf
+    follow: false
+  register: local_resolv_conf
+
+- name: Remove resolver symlink before managing the local resolver file
+  ansible.builtin.file:
+    path: /etc/resolv.conf
+    state: absent
+  when: local_resolv_conf.stat.islnk | default(false)
+
+- name: Configure the selected DNS service as the host resolver
+  ansible.builtin.copy:
+    dest: /etc/resolv.conf
+    content: |
+      nameserver 127.0.0.1
+    owner: root
+    group: root
+    mode: "0644"

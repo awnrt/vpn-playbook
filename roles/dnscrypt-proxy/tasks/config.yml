@@ -9,6 +9,9 @@
   notify:
     - Restart dnscrypt-proxy
 
+- name: Prepare local resolver before starting dnscrypt-proxy
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/prepare-local-dns.yml"
+
 - name: Enable dnscrypt-proxy
   ansible.builtin.systemd:
     name: dnscrypt-proxy

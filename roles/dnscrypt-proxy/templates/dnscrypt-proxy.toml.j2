@@ -1,6 +1,5 @@
-# Empty listen_addresses to use systemd socket activation
 listen_addresses = [
-  "127.0.0.1:5300",
+  "127.0.0.1:53",
   "{{ amneziawg_address.split('/')[0] }}:53"{% if amneziawg_address_v6 is defined %},
   "[{{ amneziawg_address_v6.split('/')[0] }}]:53"{% endif %}
 ]

@@ -4,7 +4,7 @@ An Ansible playbook for deploying and configuring a VPN server with:
 
 - [AmneziaWG](https://amnezia.org/)
 - [sing-box](https://sing-box.sagernet.org/) (VLESS Reality)
-- dnscrypt-proxy
+- Unbound (default DNS resolver)
 - UFW firewall
 - SSH hardening
 - Kernel/network tuning
@@ -17,7 +17,15 @@ On your local machine:
 - SSH client
 - Python 3
 
-Install required Ansible collections:
+Install the required Ansible collections (`community.general` and
+`ansible.posix`) if they are not already installed.
+
+```sh
+ansible-galaxy collection install community.general ansible.posix
+```
+
+The playbook currently targets Debian on `x86_64` with
+systemd.
 
 Clone the repository:
 
@@ -46,7 +54,7 @@ vpn01 ansible_host=<server_ip> ansible_user=root
 Edit your variables:
 
 ```fish
-group_vars/all.yml
+inventory/group_vars/all.yml
 ```
 
 Copy your public SSH key to the server.
@@ -74,9 +82,15 @@ ansible-playbook -i inventory/hosts.ini playbook.yml
 The main configuration is stored in:
 
 ```text
-group_vars/
+inventory/group_vars/
 └── all.yml
 ```
+
+Server keys are generated automatically on first deployment. To use fixed
+keys, set `amneziawg_private_key` for AmneziaWG, and set both
+`singbox_reality_private_key` and `singbox_reality_public_key` for sing-box
+Reality in `inventory/group_vars/all.yml`. Leave these variables undefined to
+retain an existing keypair or generate one when no key files exist.
 
 ## Services
 
@@ -94,10 +108,15 @@ The playbook configures:
 * Generates/uses Reality keys
 * Provides proxy access
 
-### dnscrypt-proxy
+### DNS
 
-* Uses Mullvad DNS-over-HTTPS
-* Serves DNS for VPN clients internally
+* Selects Unbound by default for both VPNs.
+* Choose `unbound`, `dnscrypt-proxy`, or `dnsproxy` with `dns_provider` in
+  `inventory/group_vars/all.yml`. Each resolver listens on localhost for
+  sing-box and on the configured AmneziaWG addresses for VPN clients. The
+  default upstream behavior is recursive Unbound, Mullvad DoH for
+  dnscrypt-proxy, or Quad9 DoQ for dnsproxy. Only the selected provider role
+  runs and installs its provider.
 
 ### Firewall
 

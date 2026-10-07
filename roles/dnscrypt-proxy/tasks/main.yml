@@ -2,6 +2,16 @@
 - name: Install dnscrypt-proxy
   ansible.builtin.include_tasks: install.yml
 
+- name: Gather dnscrypt-proxy service units
+  ansible.builtin.service_facts:
+
+- name: Disable dnscrypt-proxy socket activation
+  ansible.builtin.systemd:
+    name: dnscrypt-proxy.socket
+    state: stopped
+    enabled: false
+  when: "'dnscrypt-proxy.socket' in ansible_facts.services"
+
 - name: Configure dnscrypt-proxy
   ansible.builtin.include_tasks: config.yml
 

@@ -1,9 +1,14 @@
 ssh_port: 2222
 
+# DNS resolver: unbound, dnscrypt-proxy, or dnsproxy.
+dns_provider: unbound
+
 # AmneziaWG
 amneziawg_port: 8000
 amneziawg_address: "10.66.66.1/24"
 amneziawg_address_v6: "fd42:66:66::1/64"   # optional
+# Optional server key. If omitted, a key is generated on first deployment.
+# amneziawg_private_key: ""
 amneziawg_obfuscation:
   jc: 8
   jmin: 50
@@ -30,6 +35,10 @@ amneziawg_clients: []
 singbox_reality_key_dir: /root/sing-box/reality
 singbox_reality_private_key_file: /root/sing-box/reality/private.key
 singbox_reality_public_key_file: /root/sing-box/reality/public.key
+# Optional keypair. Define both values together; if omitted, the keypair is
+# generated on first deployment (or the existing key files are retained).
+# singbox_reality_private_key: ""
+# singbox_reality_public_key: ""
 
 singbox_tls_server_name: "www.somecooldomain.com"
 singbox_reality_handshake_server: "www.somecooldomain.com"

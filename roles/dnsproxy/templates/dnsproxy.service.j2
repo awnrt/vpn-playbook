@@ -1,11 +1,12 @@
 [Unit]
 Description=AdGuard DNS Proxy
-After=network-online.target
+After=network-online.target awg-quick@awg0.service
+Wants=awg-quick@awg0.service
 Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart={{ dnsproxy_install_path }} --listen={{ dnsproxy_listen }} --port={{ dnsproxy_port }} --upstream={{ dnsproxy_upstream }} --dnssec --cache --cache-size={{ dnsproxy_cache_size }} -b {{ dnsproxy_bootstrap }}
+ExecStart={{ dnsproxy_install_path }} --listen=127.0.0.1 --listen={{ amneziawg_address.split('/')[0] }}{% if amneziawg_address_v6 is defined %} --listen={{ amneziawg_address_v6.split('/')[0] }}{% endif %} --port={{ dnsproxy_port }} --upstream={{ dnsproxy_upstream }} --dnssec --cache --cache-size={{ dnsproxy_cache_size }} -b {{ dnsproxy_bootstrap }}
 Restart=on-failure
 RestartSec=5
 

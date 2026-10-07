@@ -3,12 +3,19 @@
   hosts: vpn
   become: true
 
+  pre_tasks:
+    - name: Validate deployment inputs
+      ansible.builtin.import_tasks: tasks/preflight.yml
+
   roles:
     - ssh
     - firewall
     - sysctl
     - amneziawg
-    # - dnscrypt-proxy
-    # - dnsproxy
-    - unbound
+    - role: unbound
+      when: dns_provider == 'unbound'
+    - role: dnscrypt-proxy
+      when: dns_provider == 'dnscrypt-proxy'
+    - role: dnsproxy
+      when: dns_provider == 'dnsproxy'
     - sing-box

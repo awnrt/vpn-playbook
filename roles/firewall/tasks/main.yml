@@ -20,8 +20,7 @@
   loop:
     - { port: "{{ ssh_port }}", proto: tcp }
     - { port: "80", proto: tcp }
-    - { port: "443", proto: tcp }
-    - { port: "443", proto: udp }
+    - { port: "{{ singbox_listen_port }}", proto: tcp }
     - { port: "{{ amneziawg_port }}", proto: udp }
 
 - name: Allow all incoming traffic on AmneziaWG interface

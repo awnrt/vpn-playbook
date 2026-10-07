@@ -15,6 +15,32 @@
     group: root
     mode: "0700"
 
+- name: Require both predefined Reality keys
+  ansible.builtin.assert:
+    that:
+      - (singbox_reality_private_key is defined) == (singbox_reality_public_key is defined)
+    fail_msg: Define both singbox_reality_private_key and singbox_reality_public_key, or leave both undefined.
+
+- name: Install predefined Reality private key
+  ansible.builtin.copy:
+    content: "{{ singbox_reality_private_key | trim }}\n"
+    dest: "{{ singbox_reality_private_key_file }}"
+    owner: root
+    group: root
+    mode: "0600"
+  when: singbox_reality_private_key is defined
+  no_log: true
+
+- name: Install predefined Reality public key
+  ansible.builtin.copy:
+    content: "{{ singbox_reality_public_key | trim }}\n"
+    dest: "{{ singbox_reality_public_key_file }}"
+    owner: root
+    group: root
+    mode: "0644"
+  when: singbox_reality_public_key is defined
+  no_log: true
+
 - name: Check whether Reality private key already exists
   ansible.builtin.stat:
     path: "{{ singbox_reality_private_key_file }}"
@@ -29,7 +55,9 @@
     '
   args:
     executable: /bin/bash
-  when: not singbox_reality_private_key_stat.stat.exists
+  when:
+    - singbox_reality_private_key is not defined
+    - not singbox_reality_private_key_stat.stat.exists
   changed_when: true
 
 - name: Set permissions on Reality key files
@@ -42,10 +70,25 @@
     - { path: "{{ singbox_reality_private_key_file }}", mode: "0600" }
     - { path: "{{ singbox_reality_public_key_file }}", mode: "0644" }
 
+- name: Verify Reality key files exist
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop:
+    - "{{ singbox_reality_private_key_file }}"
+    - "{{ singbox_reality_public_key_file }}"
+  register: singbox_reality_key_files
+
+- name: Ensure both Reality key files exist
+  ansible.builtin.assert:
+    that: item.stat.exists
+    fail_msg: "Reality key file is missing: {{ item.item }}"
+  loop: "{{ singbox_reality_key_files.results }}"
+
 - name: Read Reality private key
   ansible.builtin.slurp:
     src: "{{ singbox_reality_private_key_file }}"
   register: singbox_reality_private_key_raw
+  no_log: true
 
 - name: Read Reality public key
   ansible.builtin.slurp:
@@ -56,6 +99,7 @@
   ansible.builtin.set_fact:
     singbox_reality_private_key: "{{ singbox_reality_private_key_raw.content | b64decode | trim }}"
     singbox_reality_public_key: "{{ singbox_reality_public_key_raw.content | b64decode | trim }}"
+  no_log: true
 
 - name: Render sing-box configuration
   ansible.builtin.template:

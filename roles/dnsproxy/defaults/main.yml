@@ -5,7 +5,6 @@ dnsproxy_install_path: "/usr/local/bin/dnsproxy"
 dnsproxy_service_name: "dnsproxy"
 dnsproxy_service_path: "/etc/systemd/system/dnsproxy.service"
 
-dnsproxy_listen: "::"
 dnsproxy_port: 53
 dnsproxy_upstream: "quic://dns10.quad9.net/dns-query"
 dnsproxy_bootstrap: "9.9.9.9"

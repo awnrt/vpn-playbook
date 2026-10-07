@@ -7,12 +7,12 @@
     "servers": [
       {
         "type": "udp",
-        "tag": "unbound",
+        "tag": "local-dns",
         "server": "127.0.0.1",
         "server_port": 53
       }
     ],
-    "final": "unbound",
+    "final": "local-dns"
   },
   "inbounds": [
     {
@@ -51,7 +51,7 @@
     }
   ],
   "route": {
-    "default_domain_resolver": "unbound",
+    "default_domain_resolver": "local-dns",
     "rules": [
       {
         "action": "sniff"

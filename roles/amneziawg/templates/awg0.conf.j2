@@ -7,16 +7,20 @@ PrivateKey = {{ server_private_key }}
 PostUp = iptables -A FORWARD -i %i -j ACCEPT
 PostUp = iptables -A FORWARD -o %i -j ACCEPT
 PostUp = iptables -t nat -A POSTROUTING -o {{ ansible_default_ipv4.interface }} -j MASQUERADE
+{% if amneziawg_address_v6 is defined %}
 PostUp = ip6tables -A FORWARD -i %i -j ACCEPT
 PostUp = ip6tables -A FORWARD -o %i -j ACCEPT
 PostUp = ip6tables -t nat -A POSTROUTING -o {{ ansible_default_ipv4.interface }} -j MASQUERADE
+{% endif %}
 
 PostDown = iptables -D FORWARD -i %i -j ACCEPT || true
 PostDown = iptables -D FORWARD -o %i -j ACCEPT || true
 PostDown = iptables -t nat -D POSTROUTING -o {{ ansible_default_ipv4.interface }} -j MASQUERADE || true
+{% if amneziawg_address_v6 is defined %}
 PostDown = ip6tables -D FORWARD -i %i -j ACCEPT || true
 PostDown = ip6tables -D FORWARD -o %i -j ACCEPT || true
 PostDown = ip6tables -t nat -D POSTROUTING -o {{ ansible_default_ipv4.interface }} -j MASQUERADE || true
+{% endif %}
 
 Jc = {{ amneziawg_obfuscation.jc }}
 Jmin = {{ amneziawg_obfuscation.jmin }}

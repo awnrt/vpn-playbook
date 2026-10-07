@@ -7,12 +7,24 @@
     group: root
     mode: "0700"
 
-- name: Generate server private key
+- name: Install predefined server private key
+  ansible.builtin.copy:
+    content: "{{ amneziawg_private_key | trim }}\n"
+    dest: /etc/amnezia/amneziawg/privatekey
+    owner: root
+    group: root
+    mode: "0600"
+  when: amneziawg_private_key is defined
+  no_log: true
+
+- name: Generate server private key when none is configured
   ansible.builtin.command:
     cmd: awg genkey
   register: awg_private_key
   args:
     creates: /etc/amnezia/amneziawg/privatekey
+  when: amneziawg_private_key is not defined
+  no_log: true
 
 - name: Store server private key
   ansible.builtin.copy:
@@ -21,22 +33,36 @@
     owner: root
     group: root
     mode: "0600"
-  when: awg_private_key.changed
-
-- name: Generate server public key
-  ansible.builtin.shell:
-    cmd: "awg pubkey < /etc/amnezia/amneziawg/privatekey > /etc/amnezia/amneziawg/publickey"
-  args:
-    creates: /etc/amnezia/amneziawg/publickey
+  when: amneziawg_private_key is not defined and awg_private_key.changed
+  no_log: true
 
 - name: Read server private key
   ansible.builtin.slurp:
     src: /etc/amnezia/amneziawg/privatekey
   register: server_private_key_file
+  no_log: true
 
 - name: Set server private key variable
   ansible.builtin.set_fact:
     server_private_key: "{{ server_private_key_file.content | b64decode | trim }}"
+  no_log: true
+
+- name: Derive server public key from private key
+  ansible.builtin.command:
+    cmd: awg pubkey
+    stdin: "{{ server_private_key }}"
+  register: awg_public_key
+  changed_when: false
+  no_log: true
+
+- name: Store server public key
+  ansible.builtin.copy:
+    content: "{{ awg_public_key.stdout | trim }}\n"
+    dest: /etc/amnezia/amneziawg/publickey
+    owner: root
+    group: root
+    mode: "0644"
+  no_log: true
 
 - name: Install AmneziaWG config
   ansible.builtin.template:
