@@ -16,8 +16,8 @@
       - amneziawg_clients is sequence and amneziawg_clients is not string
       - amneziawg_clients is not mapping
       - singbox_users is sequence and singbox_users is not string and singbox_users is not mapping
-      - amneziawg_obfuscation is mapping
-      - (['jc', 'jmin', 'jmax', 's1', 's2', 'h1', 'h2', 'h3', 'h4'] | difference(amneziawg_obfuscation.keys() | list) | length) == 0
+      - (amneziawg_obfuscation | default({})) is mapping
+      - (amneziawg_obfuscation | default({}) | dict2items | map(attribute='key') | list | difference(['s1', 's2', 'h1', 'h2', 'h3', 'h4']) | length) == 0
       - singbox_tls_server_name | length > 0
       - singbox_reality_handshake_server | length > 0
       - ansible_default_ipv4 is defined and ansible_default_ipv4.interface is defined
@@ -29,6 +29,12 @@
     fail_msg: >-
       Invalid deployment settings. Check dns_provider, port ranges, required
       network facts, and optional key inputs.
+
+- name: Validate configured AmneziaWG obfuscation values
+  ansible.builtin.assert:
+    that: item.value is number
+    fail_msg: "AmneziaWG obfuscation value {{ item.key }} must be numeric."
+  loop: "{{ amneziawg_obfuscation | default({}) | dict2items }}"
 
 - name: Validate AmneziaWG IPv4 interface address
   ansible.builtin.command:

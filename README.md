@@ -101,6 +101,8 @@ The playbook configures:
 * Creates server keys
 * Configures the VPN interface
 * Enables the interface at boot
+* Adds only the configured server-side `s1`, `s2`, and `h1`–`h4` obfuscation
+  values; omit entries to leave them out of the interface config
 
 ### sing-box
 

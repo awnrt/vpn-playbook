@@ -10,9 +10,7 @@ amneziawg_address_v6: "fd42:66:66::1/64"   # optional
 # Optional server key. If omitted, a key is generated on first deployment.
 # amneziawg_private_key: ""
 amneziawg_obfuscation:
-  jc: 8
-  jmin: 50
-  jmax: 1000
+  # Optional server-side values; remove any entry to omit it from awg0.conf.
   s1: 1
   s2: 2
   h1: 1
