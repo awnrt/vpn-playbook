@@ -1,3 +1,4 @@
 inventory/group_vars/*
 inventory/hosts.ini
 !inventory/group_vars/all.yml
+singbox-custom
