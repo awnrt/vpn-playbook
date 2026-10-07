@@ -7,6 +7,18 @@
     group: root
     mode: "0755"
 
+- name: Wait for host DNS to resolve the SagerNet repository
+  ansible.builtin.command:
+    argv:
+      - getent
+      - ahostsv4
+      - sing-box.app
+  register: singbox_repo_dns
+  changed_when: false
+  retries: 6
+  delay: 5
+  until: singbox_repo_dns.rc == 0
+
 - name: Download SagerNet signing key
   ansible.builtin.get_url:
     url: "https://sing-box.app/gpg.key"
